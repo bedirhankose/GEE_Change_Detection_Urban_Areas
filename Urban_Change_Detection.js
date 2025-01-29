@@ -4,12 +4,12 @@ var region = ee.Geometry.Rectangle([-59.9, 13.0, -59.4, 13.5]);
 // Center the map on Barbados
 Map.centerObject(region, 10);
 
-// 2️⃣ Function to select only relevant bands and ensure consistency
+//  Function to select only relevant bands and ensure consistency
 function selectBands(image) {
   return image.select(['B11', 'B8']); // Keep only SWIR (B11) and NIR (B8)
 }
 
-// 3️⃣ Load Sentinel-2 TOA for 2015
+//  Load Sentinel-2 TOA for 2015
 var sentinel2015 = ee.ImageCollection("COPERNICUS/S2")
   .filterBounds(region)
   .filterDate('2015-06-01', '2015-12-31')
@@ -18,7 +18,7 @@ var sentinel2015 = ee.ImageCollection("COPERNICUS/S2")
   .median()
   .clip(region);
 
-// 4️⃣ Load Sentinel-2 SR for 2024
+//  Load Sentinel-2 SR for 2024
 var sentinel2024 = ee.ImageCollection("COPERNICUS/S2_SR")
   .filterBounds(region)
   .filterDate('2024-01-01', '2024-12-31')
@@ -27,7 +27,7 @@ var sentinel2024 = ee.ImageCollection("COPERNICUS/S2_SR")
   .median()
   .clip(region);
 
-// 5️⃣ Compute NDBI (Normalized Difference Built-Up Index)
+//  Compute NDBI (Normalized Difference Built-Up Index)
 function computeNDBI(image) {
     return image.normalizedDifference(['B11', 'B8']).rename('NDBI'); // SWIR: B11, NIR: B8
 }
@@ -38,10 +38,10 @@ var ndbi2015 = computeNDBI(sentinel2015);
 // Compute NDBI for Sentinel-2 (2024)
 var ndbi2024 = computeNDBI(sentinel2024);
 
-// 6️⃣ Compute NDBI change between 2015 and 2024
+//  Compute NDBI change between 2015 and 2024
 var ndbiChange = ndbi2024.subtract(ndbi2015).rename('NDBI_Change');
 
-// 7️⃣ Define thresholds for built-up change detection
+//  Define thresholds for built-up change detection
 var gainThreshold = 0.2;   // Threshold for urban expansion
 var lossThreshold = -0.2;  // Threshold for urban reduction
 
@@ -49,11 +49,11 @@ var lossThreshold = -0.2;  // Threshold for urban reduction
 var builtUpGain = ndbiChange.gt(gainThreshold).selfMask();  // New built-up areas
 var builtUpLoss = ndbiChange.lt(lossThreshold).selfMask();  // Lost built-up areas
 
-// 🔟 Reduce raster resolution before vectorization (improves performance)
+//  Reduce raster resolution before vectorization (improves performance)
 var builtUpGainReduced = builtUpGain.focal_max(1).reproject({crs: 'EPSG:4326', scale: 50});
 var builtUpLossReduced = builtUpLoss.focal_max(1).reproject({crs: 'EPSG:4326', scale: 50});
 
-// 🟢 Convert Raster to Vector (Polygons) and filter out small areas
+//  Convert Raster to Vector (Polygons) and filter out small areas
 var gainVector = builtUpGainReduced.reduceToVectors({
   geometryType: 'polygon',
   reducer: ee.Reducer.countEvery(),
@@ -74,9 +74,9 @@ var lossVector = builtUpLossReduced.reduceToVectors({
   .map(function(feature) { return feature.simplify(50); }) // Simplify polygons to reduce complexity
   .union();  // Merge adjacent polygons to reduce total count
 
-// ✅ EXPORT VECTOR DATA TO GOOGLE DRIVE
+//  EXPORT VECTOR DATA TO GOOGLE DRIVE
 
-// 1️⃣ Export Urban Expansion as a Shapefile (.SHP)
+//  Export Urban Expansion as a Shapefile (.SHP)
 Export.table.toDrive({
   collection: gainVector,
   description: 'Urban_Expansion_Vector',
@@ -85,7 +85,7 @@ Export.table.toDrive({
   fileFormat: 'SHP'
 });
 
-// 2️⃣ Export Urban Reduction as a Shapefile (.SHP)
+//  Export Urban Reduction as a Shapefile (.SHP)
 Export.table.toDrive({
   collection: lossVector,
   description: 'Urban_Reduction_Vector',
@@ -94,7 +94,7 @@ Export.table.toDrive({
   fileFormat: 'SHP'
 });
 
-// 3️⃣ Export Urban Expansion as GeoJSON
+//  Export Urban Expansion as GeoJSON
 Export.table.toDrive({
   collection: gainVector,
   description: 'Urban_Expansion_GeoJSON',
@@ -103,7 +103,7 @@ Export.table.toDrive({
   fileFormat: 'GeoJSON'
 });
 
-// 4️⃣ Export Urban Reduction as GeoJSON
+//  Export Urban Reduction as GeoJSON
 Export.table.toDrive({
   collection: lossVector,
   description: 'Urban_Reduction_GeoJSON',
@@ -112,7 +112,7 @@ Export.table.toDrive({
   fileFormat: 'GeoJSON'
 });
 
-// ✅ DISPLAY RESULTS ON THE MAP
+//  DISPLAY RESULTS ON THE MAP
 Map.addLayer(gainVector, {color: 'red'}, 'Urban Expansion (Vector)');
 Map.addLayer(lossVector, {color: 'blue'}, 'Urban Reduction (Vector)');
 Map.addLayer(ndbiChange, {min: -0.5, max: 0.5, palette: ['blue', 'white', 'red']}, 'NDBI Change (2015-2024)');
